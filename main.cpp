@@ -8,10 +8,74 @@
 
 
 #define _SHOW_LAYERS_ 0
-#define _VERBOSE_ 1
+#define _VERBOSE_ 0
 #define _TEST_IRIS_ 1
+#define _TEST_WINE_ 0
 #define __SHOW_FILE_ 0
 #define __SHOW_DATASET_ 0
+#define __SHOW_OUTPUT_PLOT_ 0
+
+#define DBL_MAX 1.79769e+308
+#define DBL_MIN 2.22507e-308
+#if __SHOW_OUTPUT_PLOT_
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+void showPlot(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& outputs) {
+    int input_dim = inputs[0].size();
+
+    // Define a list of colors for each class
+    std::vector<cv::Scalar> colors = { cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0), cv::Scalar(255, 255, 0) };
+
+    // Find min and max for normalization
+    double min_val = DBL_MAX;
+    double max_val = DBL_MIN;
+    for (const auto& input : inputs) {
+        for (double val : input) {
+            min_val = std::min(min_val, val);
+            max_val = std::max(max_val, val);
+        }
+    }
+
+    for (int i = 0; i < input_dim; ++i) {
+        for (int j = i + 1; j < input_dim; ++j) {
+            cv::Mat plot_image(500, 500, CV_8UC3, cv::Scalar(200, 200, 200)); 
+
+            // Draw Axes
+            cv::line(plot_image, cv::Point(0, 250), cv::Point(500, 250), cv::Scalar(0, 0, 0), 1);  // x-axis
+            cv::line(plot_image, cv::Point(250, 0), cv::Point(250, 500), cv::Scalar(0, 0, 0), 1);  // y-axis
+
+            for (size_t idx = 0; idx < inputs.size(); ++idx) {
+                nn.forward(inputs[idx]);
+                const auto& resultLayer = nn.getLayers().back().neurons;
+
+                int predicted_class = std::distance(resultLayer.begin(), std::max_element(resultLayer.begin(), resultLayer.end(), 
+                                    [](const Neuron& a, const Neuron& b) { return a.value < b.value; }));
+                int actual_class = std::distance(outputs[idx].begin(), std::max_element(outputs[idx].begin(), outputs[idx].end()));
+
+                // Normalize the inputs to fit within the visualization window
+                cv::Point pt((inputs[idx][i] - min_val) / (max_val - min_val) * 500, 
+                             (inputs[idx][j] - min_val) / (max_val - min_val) * 500);
+
+                cv::circle(plot_image, pt, 4, colors[actual_class], -1);        // Larger circle for actual data
+                cv::circle(plot_image, pt, 2, colors[predicted_class], -1);    // Smaller circle inside for predicted data
+            }
+            
+            // Add labels to axes
+            cv::putText(plot_image, "Variable " + std::to_string(j + 1), cv::Point(260, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+            cv::putText(plot_image, "Variable " + std::to_string(i + 1), cv::Point(10, 240), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+
+            // Show the image
+            cv::imshow("Input variable " + std::to_string(i + 1) + " vs " + std::to_string(j + 1), plot_image);
+        }
+    }
+
+    cv::waitKey(0);  // Wait until user presses a key
+}
+
+
+#endif
+
 
 void showFile(std::string fileName){
 	FileStream fs(fileName);
@@ -21,17 +85,27 @@ void showFile(std::string fileName){
 	}
 }
 
-void readDataset(std::string fileName,std::vector<std::vector<double>>& inputs,std::vector<std::vector<double>>& outputs){
+void readDataset(std::string fileName,std::vector<std::vector<double>>& inputs,std::vector<std::vector<double>>& outputs, int numberOfCollums, int outputCollum){
 	FileStream fs(fileName);
 	std::string word;
 	std::map<std::string,double> classes;
-	while((word = fs.getDelimiter(','))!=""){
-		inputs.push_back({stof(word),stof(fs.getDelimiter(',')),stof(fs.getDelimiter(',')),stof(fs.getDelimiter(','))});
-		std::string className = fs.getDelimiter(',');
-		if(classes.find(className)==classes.end()){
-			classes[className] = classes.size();
+	word = fs.getDelimiter(',');
+	while(word!=""){
+		std::vector<double> input;
+		for(int i = 0;i<numberOfCollums;i++){
+			if(i==outputCollum){
+				if(classes.find(word)==classes.end()){
+					classes[word] = classes.size();
+				}
+				outputs.push_back({classes[word]});
+				word = fs.getDelimiter(',');
+
+				continue;
+			}
+			input.push_back(std::stod(word));
+			word = fs.getDelimiter(',');
 		}
-		outputs.push_back({classes[className]});
+		inputs.push_back(input);
 	}
 
 	for(auto& x : outputs){
@@ -53,6 +127,22 @@ void readDataset(std::string fileName,std::vector<std::vector<double>>& inputs,s
 	#endif
 }
 
+void normalizeInputs(std::vector<std::vector<double>>& inputs){
+	std::vector<double> maxValues(inputs[0].size(),DBL_MIN);
+	std::vector<double> minValues(inputs[0].size(),DBL_MAX);
+	for(auto& x : inputs){
+		for(int i = 0;i<x.size();i++){
+			maxValues[i] = std::max(maxValues[i],x[i]);
+			minValues[i] = std::min(minValues[i],x[i]);
+		}
+	}
+	for(auto& x : inputs){
+		for(int i = 0;i<x.size();i++){
+			x[i] = (x[i]-minValues[i])/(maxValues[i]-minValues[i]);
+		}
+	}
+
+}
 void train(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& outputs, int epochs = 10000) {
     for (int i = 0; i < epochs; ++i) {
         for (size_t j = 0; j < inputs.size(); ++j) {
@@ -95,7 +185,7 @@ void run(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, cons
     std::cout << "Mean Squared Error (MSE) on All Data: " << mse << std::endl;
 }
 
-void trainAndTest(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& outputs, int epochs = 10000) {
+void trainAndTest(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& outputs, int epochs = 1000) {
     // Shuffle the dataset
     auto shuffled_indices = std::vector<size_t>(inputs.size());
     std::iota(shuffled_indices.begin(), shuffled_indices.end(), 0);  // Fill with 0, 1, ..., n-1
@@ -172,8 +262,8 @@ int main() {
 
 	#if _TEST_IRIS_
 		std::vector<std::vector<double>> irisInputs, irisOutputs;
-		readDataset("iris.csv",irisInputs,irisOutputs);
-		NeuralNetwork irisNN({4,8,8,3},"tanh");
+		readDataset("iris.csv",irisInputs,irisOutputs, 5, 4);
+		NeuralNetwork irisNN({4,10,3},"tanh");
 
 		#if _SHOW_LAYERS_
 			showTopology(irisNN);
@@ -203,8 +293,58 @@ int main() {
 		std::cout<<"IRIS"<<std::endl;
 		run(irisNN,irisInputs,irisOutputs);
 
+		#if __SHOW_OUTPUT_PLOT_
+			showPlot(irisNN,irisInputs,irisOutputs);
+		#endif
+
 		#if _SHOW_LAYERS_
 			showTopology(irisNN);
+		#endif
+	#endif
+
+
+	#if _TEST_WINE_
+		std::vector<std::vector<double>> wineInputs, wineOutputs;
+		readDataset("wine.csv",wineInputs,wineOutputs, 14, 0);
+		int numberOfInputs = wineInputs[0].size();
+		int numberOfOutputs = wineOutputs[0].size();
+		NeuralNetwork wineNN({numberOfInputs,10,numberOfOutputs},"tanh");
+
+		#if _SHOW_LAYERS_
+			showTopology(wineNN);
+		#endif
+
+
+		normalizeInputs(wineInputs);
+		trainAndTest(wineNN,wineInputs,wineOutputs);
+
+		//Show Inputs and outputs
+		#if __SHOW_DATASET_
+			std::cout<<"Inputs: "<<std::endl;
+			for(auto& x : wineInputs){
+				for(auto& y : x){
+					std::cout<<y<<" ";
+				}
+				std::cout<<std::endl;
+			}
+			std::cout<<"Outputs: "<<std::endl;
+			for(auto& x : wineOutputs){
+				for(auto& y : x){
+					std::cout<<y<<" ";
+				}
+				std::cout<<std::endl;
+			}
+		#endif
+
+		std::cout<<"WINE"<<std::endl;
+		run(wineNN,wineInputs,wineOutputs);
+
+		#if __SHOW_OUTPUT_PLOT_
+			showPlot(wineNN,wineInputs,wineOutputs);
+		#endif
+
+		#if _SHOW_LAYERS_
+			showTopology(wineNN);
 		#endif
 	#endif
 
