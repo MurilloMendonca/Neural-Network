@@ -8,9 +8,10 @@
 
 
 #define _SHOW_LAYERS_ 0
-#define _VERBOSE_ 0
-#define _TEST_IRIS_ 1
+#define _VERBOSE_ 1
+#define _TEST_IRIS_ 0
 #define _TEST_WINE_ 0
+#define _TEST_HEART_ 1
 #define __SHOW_FILE_ 0
 #define __SHOW_DATASET_ 0
 #define __SHOW_OUTPUT_PLOT_ 0
@@ -102,7 +103,7 @@ void readDataset(std::string fileName,std::vector<std::vector<double>>& inputs,s
 
 				continue;
 			}
-			input.push_back(std::stod(word));
+			input.push_back(word=="?"?0.0:std::stod(word));
 			word = fs.getDelimiter(',');
 		}
 		inputs.push_back(input);
@@ -154,36 +155,58 @@ void train(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, co
 
 void run(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& outputs) {
     double totalError = 0.0;
+    int errorNumber = 0;
+    std::vector<int> truePositives(outputs[0].size(), 0);  // Initialize true positives for each class to 0
+    std::vector<int> falsePositives(outputs[0].size(), 0); // Initialize false positives for each class to 0
+
     for (size_t i = 0; i < inputs.size(); ++i) {
         nn.forward(inputs[i]);
         const auto& resultLayer = nn.getLayers().back().neurons;
 
         double exampleError = 0.0;
-		int classification = 0;
+        int classification = 0;
         for(size_t j = 0; j < outputs[0].size(); j++) {
             double error = outputs[i][j] - resultLayer[j].value;
             exampleError += error * error;  // squared error
-			if(resultLayer[j].value>resultLayer[classification].value){
-				classification = j;
-			}
-			
+            if(resultLayer[j].value > resultLayer[classification].value) {
+                classification = j;
+            }
         }
-		#if _VERBOSE_
-			int expectedClassification = 0;
-			for(size_t j = 0; j < outputs[0].size(); j++) {
-				if(outputs[i][j]>outputs[i][expectedClassification]){
-					expectedClassification = j;
-				}
-			}
+        int expectedClassification = 0;
+        for(size_t j = 0; j < outputs[0].size(); j++) {
+            if(outputs[i][j] > outputs[i][expectedClassification]) {
+                expectedClassification = j;
+            }
+        }
+        if(expectedClassification == classification) {
+            truePositives[classification]++;
+        } else {
+            falsePositives[classification]++;
+            errorNumber++;
+        }
+        #if _VERBOSE_
             std::cout << "Input: ";
             for (auto val : inputs[i]) std::cout << val << " ";
             std::cout << "| Expected output: " << expectedClassification << " | Network output: " << classification << std::endl;
-		#endif
+        #endif
         totalError += exampleError / outputs[0].size();  // average error for this example
     }
+
     double mse = totalError / inputs.size();  // mean squared error over all examples
     std::cout << "Mean Squared Error (MSE) on All Data: " << mse << std::endl;
+
+	std::cout<<"Wrong Predictions: "<<errorNumber<<std::endl;
+	std::cout<<"Right Predictions: "<<inputs.size()-errorNumber<<std::endl;
+	std::cout<<"Accuracy: "<<(double)(inputs.size()-errorNumber)/inputs.size()*100<<"%"<<std::endl;
+
+	// Compute and display precision for each class
+	for (size_t i = 0; i < outputs[0].size(); i++) {
+		double precision = static_cast<double>(truePositives[i]) / (truePositives[i] + falsePositives[i]);
+		std::cout << "Precision for class " << i << ": " << precision * 100 << "%" << std::endl;
+	}
+
 }
+
 
 void trainAndTest(NeuralNetwork& nn, const std::vector<std::vector<double>>& inputs, const std::vector<std::vector<double>>& outputs, int epochs = 1000) {
     // Shuffle the dataset
@@ -269,7 +292,7 @@ int main() {
 			showTopology(irisNN);
 		#endif
 
-
+		normalizeInputs(irisInputs);
 		trainAndTest(irisNN,irisInputs,irisOutputs);
 
 		//Show Inputs and outputs
@@ -345,6 +368,51 @@ int main() {
 
 		#if _SHOW_LAYERS_
 			showTopology(wineNN);
+		#endif
+	#endif
+
+	#if _TEST_HEART_
+		std::vector<std::vector<double>> heartInputs, heartOutputs;
+		readDataset("heart_disease.csv",heartInputs,heartOutputs, 14, 13);
+		int numberOfInputs = heartInputs[0].size();
+		int numberOfOutputs = heartOutputs[0].size();
+		NeuralNetwork heartNN({numberOfInputs,100,numberOfOutputs},"tanh");
+
+		#if _SHOW_LAYERS_
+			showTopology(wineNN);
+		#endif
+
+
+		normalizeInputs(heartInputs);
+		trainAndTest(heartNN,heartInputs,heartOutputs,100);
+
+		//Show Inputs and outputs
+		#if __SHOW_DATASET_
+			std::cout<<"Inputs: "<<std::endl;
+			for(auto& x : heartInputs){
+				for(auto& y : x){
+					std::cout<<y<<" ";
+				}
+				std::cout<<std::endl;
+			}
+			std::cout<<"Outputs: "<<std::endl;
+			for(auto& x : heartOutputs){
+				for(auto& y : x){
+					std::cout<<y<<" ";
+				}
+				std::cout<<std::endl;
+			}
+		#endif
+
+		std::cout<<"WINE"<<std::endl;
+		run(heartNN,heartInputs,heartOutputs);
+
+		#if __SHOW_OUTPUT_PLOT_
+			showPlot(heartNN,heartInputs,heartOutputs);
+		#endif
+
+		#if _SHOW_LAYERS_
+			showTopology(heartNN);
 		#endif
 	#endif
 
