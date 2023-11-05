@@ -376,7 +376,7 @@ int main() {
 		readDataset("heart_disease.csv",heartInputs,heartOutputs, 14, 13);
 		int numberOfInputs = heartInputs[0].size();
 		int numberOfOutputs = heartOutputs[0].size();
-		NeuralNetwork heartNN({numberOfInputs,100,numberOfOutputs},"tanh");
+		NeuralNetwork heartNN({numberOfInputs,100,numberOfOutputs},"tanh",1);
 
 		#if _SHOW_LAYERS_
 			showTopology(wineNN);

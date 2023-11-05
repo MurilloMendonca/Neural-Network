@@ -5,11 +5,14 @@
 #include <random>
 #include <iostream>
 #include <map>
+#include <thread>
 #include "Layer.hpp"
+#include "ThreadPool.hpp"
+#include <future>
 
 class NeuralNetwork {
 public:
-    NeuralNetwork(std::vector<int> topology,std::string activationFunction = "sigmoid");
+    NeuralNetwork(std::vector<int> topology,std::string activationFunction = "sigmoid", size_t poolSize = std::thread::hardware_concurrency());
     void forward(const std::vector<double>& inputValues);
     void backpropagate(const std::vector<double>& targetValues);
 	std::vector<Layer> getLayers();
@@ -29,7 +32,8 @@ public:
 	double activationPrime(double x);
 
 private:
-    std::vector<Layer> layers;
+	std::vector<Layer> layers;
     double learningRate = 0.001;
+	ThreadPool pool;
 };
 

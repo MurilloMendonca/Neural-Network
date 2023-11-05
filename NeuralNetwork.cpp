@@ -6,8 +6,8 @@ std::map<std::string, double(*)(double)> NeuralNetwork::activationFunctions = {
 	{"tanh", NeuralNetwork::tanh}
 };
 
-NeuralNetwork::NeuralNetwork(std::vector<int> topology, std::string activationFunc) 
-    : activationFunction(activationFunc) {
+NeuralNetwork::NeuralNetwork(std::vector<int> topology, std::string activationFunc, size_t poolSize) 
+    : activationFunction(activationFunc), pool(poolSize) {
     for (size_t i = 0; i < topology.size() - 1; ++i) {
         layers.push_back(Layer(topology[i], topology[i + 1], i == 0 ? 0 : topology[i - 1]));
     }
@@ -20,20 +20,24 @@ void NeuralNetwork::forward(const std::vector<double>& inputValues) {
         layers[0].neurons[i].value = inputValues[i];
     }
 
-    // Forward propagation
+
+
     for (size_t layerNum = 1; layerNum < layers.size(); ++layerNum) {
         Layer& prevLayer = layers[layerNum - 1];
-        for (Neuron& neuron : layers[layerNum].neurons) {
-            double sum = 0.0;
-            size_t weightIndex = 0; // index for accessing weights of the neuron
-            for (Neuron& prevNeuron : prevLayer.neurons) {
-                sum += prevNeuron.value * neuron.weights[weightIndex]; // Access weights from the current neuron, not the previous one
-                weightIndex++; // Move to the next weight for the next neuron in the previous layer
-            }
-            neuron.value = activation(sum + neuron.bias);
+        Layer& currentLayer = layers[layerNum];
+        for (Neuron& neuron : currentLayer.neurons) {
+
+                    double sum = 0.0;
+                    for (size_t weightIndex = 0; weightIndex < neuron.weights.size(); ++weightIndex) {
+                        sum += prevLayer.neurons[weightIndex].value * neuron.weights[weightIndex];
+                    }
+                    neuron.value = this->activation(sum + neuron.bias);
+
         }
     }
+
 }
+
 
 
 void NeuralNetwork::backpropagate(const std::vector<double>& targetValues) {
@@ -47,31 +51,74 @@ void NeuralNetwork::backpropagate(const std::vector<double>& targetValues) {
         outputLayer.neurons[n].delta = delta * activationPrime(outputLayer.neurons[n].value);
     }
 
+    std::vector<std::future<void>> futures;
+
+    // Calculate the number of available threads in the pool
+    size_t poolSize = pool.threadCount();
+
     // 2. Propagate the error backwards through the network
     for (size_t layerNum = layers.size() - 2; layerNum > 0; --layerNum) {
         Layer& currentLayer = layers[layerNum];
         Layer& nextLayer = layers[layerNum + 1];
 
-        for (Neuron& neuron : currentLayer.neurons) {
-            double deltaSum = 0.0;
-            for (Neuron& nextNeuron : nextLayer.neurons) {
-                deltaSum += nextNeuron.delta * neuron.weights[layerNum];
-            }
-            neuron.delta = deltaSum * activationPrime(neuron.value);
+        size_t chunkSize = currentLayer.neurons.size() / poolSize;
+        size_t remainingNeurons = currentLayer.neurons.size() % poolSize;
+
+        for (size_t t = 0; t < poolSize; ++t) {
+            size_t startIdx = t * chunkSize;
+            size_t endIdx = (t + 1) * chunkSize + (t == poolSize - 1 ? remainingNeurons : 0);
+
+            futures.emplace_back(
+                pool.enqueue([startIdx, endIdx, layerNum, this, &currentLayer, &nextLayer]() {
+                    for (size_t n = startIdx; n < endIdx; ++n) {
+                        double deltaSum = 0.0;
+                        Neuron& neuron = currentLayer.neurons[n];
+                        for (Neuron& nextNeuron : nextLayer.neurons) {
+                            deltaSum += nextNeuron.delta * neuron.weights[layerNum];
+                        }
+                        neuron.delta = deltaSum * activationPrime(neuron.value);
+                    }
+                })
+            );
         }
     }
 
-    // 3. Update weights and biases using the calculated errors
+    // Wait for all tasks to finish
+    for (auto& future : futures) {
+        future.get();
+    }
+
+    futures.clear();
+
+    // 3. Update weights and biases using the calculated errors (Parallelized)
     for (size_t layerNum = layers.size() - 1; layerNum > 0; --layerNum) {
         Layer& currentLayer = layers[layerNum];
         Layer& prevLayer = layers[layerNum - 1];
 
-        for (Neuron& neuron : currentLayer.neurons) {
-            for (size_t w = 0; w < neuron.weights.size(); ++w) {
-                neuron.weights[w] += learningRate * neuron.delta * prevLayer.neurons[w].value;
-            }
-            neuron.bias += learningRate * neuron.delta; // Update the bias
+        size_t chunkSize = currentLayer.neurons.size() / poolSize;
+        size_t remainingNeurons = currentLayer.neurons.size() % poolSize;
+
+        for (size_t t = 0; t < poolSize; ++t) {
+            size_t startIdx = t * chunkSize;
+            size_t endIdx = (t + 1) * chunkSize + (t == poolSize - 1 ? remainingNeurons : 0);
+
+            futures.emplace_back(
+                pool.enqueue([startIdx, endIdx, layerNum, this, &currentLayer, &prevLayer]() {
+                    for (size_t n = startIdx; n < endIdx; ++n) {
+                        Neuron& neuron = currentLayer.neurons[n];
+                        for (size_t w = 0; w < neuron.weights.size(); ++w) {
+                            neuron.weights[w] += this->learningRate * neuron.delta * prevLayer.neurons[w].value;
+                        }
+                        neuron.bias += this->learningRate * neuron.delta;
+                    }
+                })
+            );
         }
+    }
+
+    // Wait for all tasks to finish
+    for (auto& future : futures) {
+        future.get();
     }
 }
 
