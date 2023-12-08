@@ -55,7 +55,8 @@ void NeuralNetwork::backpropagate(const std::vector<double>& targetValues) {
         for (Neuron& neuron : currentLayer.neurons) {
             double deltaSum = 0.0;
             for (Neuron& nextNeuron : nextLayer.neurons) {
-                deltaSum += nextNeuron.delta * neuron.weights[layerNum];
+				if(layerNum<neuron.weights.size())
+                	deltaSum += nextNeuron.delta * neuron.weights[layerNum];
             }
             neuron.delta = deltaSum * activationPrime(neuron.value);
         }
@@ -112,7 +113,7 @@ double NeuralNetwork::activationPrime(double x) {
     throw std::runtime_error("Unknown activation function");
 }
 
-std::vector<Layer> NeuralNetwork::getLayers() {
+std::vector<Layer> NeuralNetwork::getLayers() const{
     return layers;
 }
 

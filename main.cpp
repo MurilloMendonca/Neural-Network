@@ -8,10 +8,10 @@
 
 
 #define _SHOW_LAYERS_ 0
-#define _VERBOSE_ 1
+#define _VERBOSE_ 0
 #define _TEST_IRIS_ 0
-#define _TEST_WINE_ 0
-#define _TEST_HEART_ 1
+#define _TEST_WINE_ 1
+#define _TEST_HEART_ 0
 #define __SHOW_FILE_ 0
 #define __SHOW_DATASET_ 0
 #define __SHOW_OUTPUT_PLOT_ 0
@@ -339,7 +339,7 @@ int main() {
 
 
 		normalizeInputs(wineInputs);
-		trainAndTest(wineNN,wineInputs,wineOutputs);
+		trainAndTest(wineNN,wineInputs,wineOutputs, 1000);
 
 		//Show Inputs and outputs
 		#if __SHOW_DATASET_

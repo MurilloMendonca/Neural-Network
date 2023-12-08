@@ -10,9 +10,10 @@
 class NeuralNetwork {
 public:
     NeuralNetwork(std::vector<int> topology,std::string activationFunction = "sigmoid");
+    NeuralNetwork(){};
     void forward(const std::vector<double>& inputValues);
     void backpropagate(const std::vector<double>& targetValues);
-	std::vector<Layer> getLayers();
+	std::vector<Layer> getLayers() const;
 	void setLearningRate(double learningRate);
 
 	static std::map<std::string, double(*)(double)> activationFunctions;
