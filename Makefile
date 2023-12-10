@@ -1,6 +1,6 @@
 # Compiler and flags
-CXX = g++
-CXXFLAGS = -std=c++11 -Wall -O3 -g
+CXX = /opt/rocm/bin/hipcc
+CXXFLAGS = -std=c++11 -Wall -O3 -g 
 LIBS = -L/usr/lib 
 # Targets
 all: neural_network
