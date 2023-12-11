@@ -4,8 +4,8 @@
 #include "ClassificationNN.hpp"
 
 
-#define _SHOW_LAYERS_ 0
-#define _VERBOSE_ 0
+#define _SHOW_LAYERS_ 1
+#define _VERBOSE_ 1
 #define _TEST_IRIS_ 1
 #define _TEST_WINE_ 0
 #define __SHOW_FILE_ 0

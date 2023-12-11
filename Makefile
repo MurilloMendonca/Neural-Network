@@ -5,7 +5,7 @@ LIBS = -L/usr/lib
 # Targets
 all: neural_network
 
-neural_network: main.o NeuralNetwork.o Layer.o Neuron.o ClassificationNN.o
+neural_network: main.o NeuralNetwork.o Layer.o Neuron.o ClassificationNN.o Kernels.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
 
 main.o: main.cpp NeuralNetwork.hpp Layer.hpp Neuron.hpp Neuron.cpp Layer.cpp ClassificationNN.hpp ClassificationNN.cpp

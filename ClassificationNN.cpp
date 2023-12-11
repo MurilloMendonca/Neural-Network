@@ -154,7 +154,7 @@ void ClassificationNN::testWithOutput() {
             falsePositives[classification]++;
             errorNumber++;
         }
-        #if _VERBOSE_
+        #if 0
             std::cout << "Input: ";
             for (auto val : inputs[i]) std::cout << val << " ";
             std::cout << "| Expected output: " << expectedClassification << " | Network output: " << classification << std::endl;
@@ -234,7 +234,7 @@ void ClassificationNN::showTopology(){
         std::cout << "Layer " << layerNum << " (" << layer.neurons.size() << " neurons):" << std::endl;
         int neuronNum = 1; // For display purposes
         for (const auto& neuron : layer.neurons) {
-            std::cout << "\tNeuron " << neuronNum << " weights: ";
+            std::cout << "\tNeuron " << neuronNum <<": Value: "<<neuron.value<< " weights: ";
             for (const auto& weight : neuron.weights) {
                 std::cout << weight << " ";
             }

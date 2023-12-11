@@ -28,6 +28,7 @@ public:
 	
 	double activation(double x);
 	double activationPrime(double x);
+	void prepareDataForHip();
 
 private:
     std::vector<Layer> layers;
