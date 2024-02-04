@@ -1,4 +1,4 @@
-#include "ClassificationNN.hpp"
+#include "../include/ClassificationNN.hpp"
 
 ClassificationNN::ClassificationNN() {};
 

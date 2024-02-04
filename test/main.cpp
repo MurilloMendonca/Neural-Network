@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
-#include "cpp-easy-file-stream/fs.hpp"
-#include "ClassificationNN.hpp"
+#include "../dependencies/cpp-easy-file-stream/include/fs.hpp"
+#include "../include/ClassificationNN.hpp"
 
 
 #define _SHOW_LAYERS_ 0

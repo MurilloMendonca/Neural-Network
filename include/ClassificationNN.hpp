@@ -7,7 +7,7 @@
 #include <chrono>
 #include <algorithm>
 
-#include "cpp-easy-file-stream/fs.hpp"
+#include "../dependencies/cpp-easy-file-stream/include/fs.hpp"
 #include "NeuralNetwork.hpp"
 
 
