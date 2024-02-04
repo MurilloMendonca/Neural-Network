@@ -20,21 +20,3 @@ target_include_directories(libNeuralNet PUBLIC
 # Add dependencies
 add_subdirectory(dependencies/cpp-easy-file-stream)
 
-# Add executable for testing
-add_executable(testExecutable
-    test/main.cpp
-)
-
-# Link your library and dependencies
-target_link_libraries(testExecutable PRIVATE libNeuralNet libEasyFileStream)
-
-# Set the output directory for the test executable
-set_target_properties(testExecutable PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
-)
-
-# Copy out.txt to the binary directory during build
-configure_file(test/heart_disease.csv ${CMAKE_CURRENT_BINARY_DIR}/bin/heart_disease.csv COPYONLY)
-configure_file(test/iris.csv ${CMAKE_CURRENT_BINARY_DIR}/bin/iris.csv COPYONLY)
-configure_file(test/wine.csv ${CMAKE_CURRENT_BINARY_DIR}/bin/wine.csv COPYONLY)
-
