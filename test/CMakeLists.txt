@@ -1,0 +1,6 @@
+add_executable(demoNN demo.cpp)
+target_link_libraries(demoNN libNeuralNet)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/iris.csv ${CMAKE_CURRENT_BINARY_DIR}/iris.csv COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/heart_disease.csv ${CMAKE_CURRENT_BINARY_DIR}/heart_disease.csv COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/wine.csv ${CMAKE_CURRENT_BINARY_DIR}/wine.csv COPYONLY)
+add_test(NeuralNetworkDemo demoNN)

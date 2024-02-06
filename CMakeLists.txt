@@ -20,3 +20,5 @@ target_include_directories(libNeuralNet PUBLIC
 # Add dependencies
 add_subdirectory(dependencies/cpp-easy-file-stream)
 
+enable_testing()
+add_subdirectory(test)
